@@ -15,7 +15,7 @@ export default function Navbar() {
         layout="fixed"
         objectFit="cover"
         quality={100}
-        width={80}
+        width={60}
     />
 
     return (
