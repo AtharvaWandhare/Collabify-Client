@@ -1,53 +1,101 @@
 'use client';
-import { useState, useEffect, use } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
+import Quill from 'quill';
+import 'quill/dist/quill.snow.css';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github.css';
 
 export default function DocumentEditor({ params: paramsPromise }) {
     const params = use(paramsPromise);
-    const id = params.id;
+    const { id } = params.id;
+
+    const editorRef = useRef(null);
+    const quillInstance = useRef(null);
+
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
 
+    useEffect(() => {
+        if (editorRef.current && !quillInstance.current) {
+            quillInstance.current = new Quill(editorRef.current, {
+                theme: 'snow',
+                placeholder: 'Start typing your document...',
+                modules: {
+                    syntax: { hljs },
+                    toolbar: [
+                        [{ header: [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        ['link', 'image'],
+                        ['clean'],
+                        ['code-block'],
+                        [{ color: [] }, { background: [] }],
+                        [{ align: [] }]
+                    ]
+                }
+            });
+
+            // Optionally set initial content
+            quillInstance.current.setContents(quillInstance.current.clipboard.convert(content));
+
+            // Listen for changes
+            quillInstance.current.on('text-change', () => {
+                const html = editorRef.current.querySelector('.ql-editor')?.innerHTML;
+                setContent(html);
+            });
+        }
+    }, [editorRef, quillInstance, content]);
+
+
     // useEffect(() => {
-    //     if (!id) return;
-    //     fetch(`/api/v1/documents/${id}`, {
-    //         headers: {
-    //             Authorization: `Bearer ${localStorage.getItem('token')}`
-    //         }
-    //     })
-    //         .then(res => res.json())
-    //         .then(data => {
-    //             setTitle(data?.data?.title || '');
-    //             setContent(data?.data?.content || '');
-    //         });
+    //   if (!id) return;
+
+    //   fetch(`/api/v1/documents/${id}`, {
+    //     headers: {
+    //       Authorization: `Bearer ${localStorage.getItem('token')}`
+    //     }
+    //   })
+    //     .then(res => res.json())
+    //     .then(data => {
+    //       setTitle(data?.data?.title || '');
+    //       setContent(data?.data?.content || '');
+    //       if (quillInstance.current) {
+    //         quillInstance.current.setContents(
+    //           quillInstance.current.clipboard.convert(data?.data?.content || '')
+    //         );
+    //       }
+    //     });
     // }, [id]);
 
-    // const saveDocument = async () => {
-    //     await fetch(`/api/v1/documents/${id}`, {
-    //         method: 'PUT',
-    //         headers: {
-    //             'Content-Type': 'application/json',
-    //             Authorization: `Bearer ${localStorage.getItem('token')}`
-    //         },
-    //         body: JSON.stringify({ title, content })
-    //     });
-    //     alert('Saved!');
-    // };
+    const saveDocument = async () => {
+        //   await fetch(`/api/v1/documents/${id}`, {
+        //     method: 'PUT',
+        //     headers: {
+        //       'Content-Type': 'application/json',
+        //       Authorization: `Bearer ${localStorage.getItem('token')}`
+        //     },
+        //     body: JSON.stringify({ title, content })
+        //   });
+        console.log('Document saved:', { title, content });
+        alert('Document Saved!');
+    };
 
     return (
-        <div className="p-4">
+        <div className="p-6 max-w-5xl mx-auto">
             <input
-                className="text-xl font-bold w-full border-b mb-4"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
+                type="text"
                 placeholder="Document Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full text-3xl font-semibold border-b-2 border-gray-300 mb-6 outline-none"
             />
-            <textarea
-                className="w-full h-[70vh] p-2 border"
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                placeholder="Start writing..."
-            />
-            <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+
+            <div id={id} ref={editorRef} className="bg-white min-h-[400px] scroll-auto text-black" />
+
+            <button
+                onClick={saveDocument}
+                className="mt-6 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            >
                 Save
             </button>
         </div>
