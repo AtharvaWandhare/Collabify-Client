@@ -1,8 +1,8 @@
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
-import Quill from 'quill';
-import 'quill/dist/quill.snow.css';
+import dynamic from 'next/dynamic';
 import hljs from 'highlight.js';
+import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
 
 export default function DocumentEditor({ params: paramsPromise }) {
@@ -16,35 +16,42 @@ export default function DocumentEditor({ params: paramsPromise }) {
     const [content, setContent] = useState('');
 
     useEffect(() => {
-        if (editorRef.current && !quillInstance.current) {
-            quillInstance.current = new Quill(editorRef.current, {
-                theme: 'snow',
-                placeholder: 'Start typing your document...',
-                modules: {
-                    syntax: { hljs },
-                    toolbar: [
-                        [{ header: [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ list: 'ordered' }, { list: 'bullet' }],
-                        ['link', 'image'],
-                        ['clean'],
-                        ['code-block'],
-                        [{ color: [] }, { background: [] }],
-                        [{ align: [] }]
-                    ]
-                }
-            });
+        const initQuill = async () => {
+            if (editorRef.current && !quillInstance.current) {
+                const Quill = (await import('quill')).default;
+                const hljs = (await import('highlight.js')).default;
 
-            // Optionally set initial content
-            quillInstance.current.setContents(quillInstance.current.clipboard.convert(content));
+                quillInstance.current = new Quill(editorRef.current, {
+                    theme: 'snow',
+                    placeholder: 'Start typing your document...',
+                    modules: {
+                        syntax: { hljs },
+                        toolbar: [
+                            [{ header: [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ list: 'ordered' }, { list: 'bullet' }],
+                            ['link', 'image'],
+                            ['clean'],
+                            ['code-block'],
+                            [{ color: [] }, { background: [] }],
+                            [{ align: [] }]
+                        ]
+                    }
+                });
 
-            // Listen for changes
-            quillInstance.current.on('text-change', () => {
-                const html = editorRef.current.querySelector('.ql-editor')?.innerHTML;
-                setContent(html);
-            });
-        }
-    }, [editorRef, quillInstance, content]);
+                quillInstance.current.setContents(
+                    quillInstance.current.clipboard.convert(content)
+                );
+
+                quillInstance.current.on('text-change', () => {
+                    const html = editorRef.current.querySelector('.ql-editor')?.innerHTML;
+                    setContent(html);
+                });
+            }
+        };
+
+        initQuill();
+    }, [content]);
 
 
     // useEffect(() => {
