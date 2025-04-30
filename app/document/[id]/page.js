@@ -1,7 +1,5 @@
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-import hljs from 'highlight.js';
 import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
 
@@ -25,7 +23,7 @@ export default function DocumentEditor({ params: paramsPromise }) {
                     theme: 'snow',
                     placeholder: 'Start typing your document...',
                     modules: {
-                        syntax: { hljs },
+                        syntax: { hljs: hljs },
                         toolbar: [
                             [{ header: [1, 2, 3, false] }],
                             ['bold', 'italic', 'underline', 'strike'],
@@ -83,7 +81,8 @@ export default function DocumentEditor({ params: paramsPromise }) {
         //     },
         //     body: JSON.stringify({ title, content })
         //   });
-        console.log('Document saved:', { title, content });
+        const data = JSON.stringify(content);
+        console.log('Document saved:', { title, data });
         alert('Document Saved!');
     };
 
