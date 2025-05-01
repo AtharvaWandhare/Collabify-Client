@@ -1,0 +1,29 @@
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.documentListItem h2 {
+    margin: 0;
+    color: #333;
+    transition: color 0.3s ease;
+    width: 200px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.documentListItem h2:hover {
+    color: #007bff;
+    text-decoration: underline;
+}
+
+.documentListItem:hover h2 {
+    text-decoration: underline;
+}
+
+.documentListItem:hover {
+    background-color: #f0f4ff;
+    transition: background-color 0.3s ease;
+}
