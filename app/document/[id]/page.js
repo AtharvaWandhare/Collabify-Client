@@ -94,10 +94,22 @@ export default function DocumentEditor() {
         if (isLoaded) initQuill();
     }, [isLoaded, content]);
 
+    // YOO, function that saves the document every 5 - 10 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (quillInstance.current) {
+                const delta = quillInstance.current.getContents();
+                setContent(delta);
+                saveDocument();
+            }
+        }, 1000 * 60);
+
+        return () => clearInterval(interval);
+    }, [quillInstance]);
+
     const saveDocument = async () => {
         if (!title.trim()) {
-            alert('Title cannot be empty!');
-            return;
+            setTitle('Untitled Document');
         }
 
         try {
