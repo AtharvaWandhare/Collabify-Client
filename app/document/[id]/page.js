@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState } from 'react';
 import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
+import { useUser } from '@/context/context';
 import { useParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { saveAs } from 'file-saver';
-import { Document, Packer, Paragraph } from 'docx';
-import HtmlToDocx from 'html-to-docx';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
+import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 import { MdDownload } from 'react-icons/md';
 
 export default function DocumentEditor() {
     const { id } = useParams();
+    const { user } = useUser();
     const token = Cookies.get('AuthToken');
 
     const editorRef = useRef(null);
@@ -22,6 +24,7 @@ export default function DocumentEditor() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
+
 
     useEffect(() => {
         const fetchDocument = async () => {
@@ -83,6 +86,7 @@ export default function DocumentEditor() {
                 quillInstance.current.on('text-change', () => {
                     const delta = quillInstance.current.getContents();
                     setContent(delta);
+                    saveDocument();
                 });
             }
         };
@@ -126,32 +130,47 @@ export default function DocumentEditor() {
 
     const downloadAsPDF = () => {
         const content = editorRef.current.querySelector('.ql-editor');
-        console.log('Content:', content);
-        // const deltaObj = JSON.parse(content);
+        // console.log('Content:', content);
 
-        // const converter = new QuillDeltaToHtmlConverter(content.ops, {});
-        // const html = converter.convert();
         html2pdf()
             .from(content)
-            .set({ filename: `${title}.pdf` })
+            .set({
+                filename: `${title}.pdf`,
+                margin: 1,
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, logging: true, useCORS: true },
+            })
             .save();
     };
 
-    const downloadAsDocx = async () => {
-        const editorElement = editorRef.current?.querySelector('.ql-editor');
-        if (!editorElement) return;
+    const downloadDOCX = async () => {
+        console.log('Starting download as DOCX...');
+        try {
+            const response = await axios.get(`https://localhost:8000/api/v1/document/${id}/download`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                },
+                responseType: 'blob',
+            });
+            console.log('Response after download:', response);
 
-        const html = editorElement.innerHTML;
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${title}.docx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (error) {
+            console.error('Error downloading document:', error);
+            alert('An error occurred while downloading.');
+        }
+    }
 
-        const blob = await HtmlToDocx(html, {
-            header: false,
-            footer: false,
-            orientation: 'portrait',
-            title: title || 'Document',
-        });
-
-        saveAs(blob, `${title || 'document'}.docx`);
-    };
 
     if (!isLoaded) return <div className="p-6 text-gray-600">Loading document...</div>;
 
@@ -187,13 +206,14 @@ export default function DocumentEditor() {
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    downloadAsDocx();
+                    downloadDOCX();
                 }}
-                className="mt-4 ml-4 bg-red-600 text-white cursor-pointer px-6 py-2 rounded hover:bg-red-700"
+                className="mt-4 ml-4 bg-green-600 text-white cursor-pointer px-6 py-2 rounded hover:bg-green-700"
             >
                 <MdDownload className="inline-block mr-2" />
                 Docx
             </button>
+
         </div>
     );
 }
