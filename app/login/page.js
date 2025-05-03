@@ -9,7 +9,7 @@ import { useUser } from '@/context/context';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
+    const [text, setText] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -25,9 +25,18 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        let email = '';
+        let username = '';
+
+        if (text.includes('@')) {
+            email = text.trim();
+        } else {
+            username = text.trim();
+        }
+        setPassword(password.trim());
 
         await axios.post('https://localhost:8000/api/v1/user/login',
-            { email, password },
+            { email, username, password },
             { headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, withCredentials: true })
             .then((response) => {
                 const JsonData = response.data;
@@ -46,12 +55,18 @@ export default function LoginPage() {
                     };
                     login(userData);
                     redirect('/document');
-                } else {
-                    setError(JsonData.message || 'Login failed. Please try again.');
                 }
             }).catch((error) => {
-                console.error('Error during login:', error);
-                setError(error.response?.data?.message || 'Login failed. Please try again.(From Catch Block)');
+                console.error('(By me from catch block in login) Error during login:', error);
+                if (error.status === 401) {
+                    setError('Username or Email is required!');
+                } else if (error.status === 402) {
+                    setError('Password is required!');
+                } else if (error.status === 404) {
+                    setError('User not found!');
+                } else {
+                    setError(error.response?.data?.message || 'Login failed. Please try again.(From Catch Block)');
+                }
             }).finally(() => {
                 setLoading(false);
             });
@@ -68,11 +83,11 @@ export default function LoginPage() {
                     <div className="relative">
                         <FiMail className="absolute left-3 top-3 text-gray-400" />
                         <input
-                            type="email"
+                            type="text"
                             className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Email / Username"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
                             required
                         />
                     </div>
