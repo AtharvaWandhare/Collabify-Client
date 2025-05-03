@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
 import { useUser } from '@/context/context';
@@ -12,6 +12,7 @@ import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, TextRun } from 'docx';
 import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 import { MdDownload } from 'react-icons/md';
+import { CiSaveUp2 } from "react-icons/ci";
 
 export default function DocumentEditor() {
     const { id } = useParams();
@@ -23,7 +24,24 @@ export default function DocumentEditor() {
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [autoSaveToast, setAutoSaveToast] = useState(null);
+    const [error, setError] = useState(null);
     const [isLoaded, setIsLoaded] = useState(false);
+
+    const saveIcon = <CiSaveUp2 />
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
 
 
     useEffect(() => {
@@ -54,6 +72,39 @@ export default function DocumentEditor() {
 
         fetchDocument();
     }, [id, token]);
+
+    const debouncedSave = useCallback(
+        debounce(async (content, title) => {
+            try {
+                const response = await axios.put(
+                    `https://localhost:8000/api/v1/document/${id}`,
+                    {
+                        title,
+                        content: JSON.stringify(content)
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        withCredentials: true,
+                    }
+                );
+
+                if (response.status === 200) {
+                    setAutoSaveToast(saveIcon);
+                    setTimeout(() => {
+                        setAutoSaveToast(null);
+                    }, 2000);
+                    console.log('Document auto-saved successfully!');
+                }
+            } catch (error) {
+                console.error('Error auto-saving document:', error);
+            }
+        }, 2000), // 2000ms delay
+        [id, token]
+    );
 
     useEffect(() => {
         const initQuill = async () => {
@@ -86,7 +137,8 @@ export default function DocumentEditor() {
                 quillInstance.current.on('text-change', () => {
                     const delta = quillInstance.current.getContents();
                     setContent(delta);
-                    saveDocument();
+                    // saveDocument();
+                    debouncedSave(delta, title);
                 });
             }
         };
@@ -95,17 +147,17 @@ export default function DocumentEditor() {
     }, [isLoaded, content]);
 
     // YOO, function that saves the document every 5 - 10 seconds
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (quillInstance.current) {
-                const delta = quillInstance.current.getContents();
-                setContent(delta);
-                saveDocument();
-            }
-        }, 1000 * 60);
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         if (quillInstance.current) {
+    //             const delta = quillInstance.current.getContents();
+    //             setContent(delta);
+    //             saveDocument();
+    //         }
+    //     }, 1000 * 60);
 
-        return () => clearInterval(interval);
-    }, [quillInstance]);
+    //     return () => clearInterval(interval);
+    // }, [quillInstance]);
 
     const saveDocument = async () => {
         if (!title.trim()) {
@@ -130,13 +182,22 @@ export default function DocumentEditor() {
             );
 
             if (response.status === 200) {
-                alert('Document saved successfully!');
+                setToast('Document saved successfully!');
+                setTimeout(() => {
+                    setToast(null);
+                }, 3000);
             } else {
-                alert('Failed to save document.');
+                setToast('Failed to save document.');
+                setTimeout(() => {
+                    setToast(null);
+                }, 3000);
             }
         } catch (error) {
             console.error('Error saving document:', error);
-            alert('An error occurred while saving.');
+            setToast('An error occurred while saving.');
+            setTimeout(() => {
+                setToast(null);
+            }, 3000);
         }
     };
 
@@ -179,7 +240,10 @@ export default function DocumentEditor() {
             link.parentNode.removeChild(link);
         } catch (error) {
             console.error('Error downloading document:', error);
-            alert('An error occurred while downloading.');
+            setToast('An error occurred while downloading.');
+            setTimeout(() => {
+                setToast(null);
+            }, 3000);
         }
     }
 
@@ -225,6 +289,24 @@ export default function DocumentEditor() {
                 <MdDownload className="inline-block mr-2" />
                 Docx
             </button>
+
+            {toast && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                    {toast}
+                </div>
+            )}
+
+            {error && (
+                <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                    {error}
+                </div>
+            )}
+
+            {autoSaveToast && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg flex items-center justify-center gap-2">
+                    {autoSaveToast} saving...
+                </div>
+            )}
 
         </div>
     );
