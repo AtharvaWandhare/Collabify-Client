@@ -1,0 +1,82 @@
+.editorWrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    scale: 1;
+}
+
+.toolbar {
+    width: 8.5in;
+    margin: 0 auto;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.container {
+    width: 7.7in;
+    min-height: 11in;
+    margin: 0 auto;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
+    border-radius: 0 0 0.375rem 0.375rem;
+    scale: 1;
+}
+
+.editor {
+    height: 12.2in;
+    padding: 1in;
+    margin: 0;
+}
+
+/* Quill overrides */
+.container :global(.ql-editor) {
+    padding: 0;
+    min-height: 9in;
+    /* 11in - 2in for top/bottom margins */
+}
+
+.container :global(.page-break) {
+    margin: 2rem 0;
+    border: none;
+    border-top: 2px dashed #ccc;
+    position: relative;
+}
+
+.container :global(.page-break::before) {
+    content: 'Page Break';
+    position: absolute;
+    top: -0.8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 0 0.5rem;
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.container :global(.ql-editor) {
+    padding: 0;
+    min-height: 9in;
+    color: #000000;
+}
+
+.container :global(.ql-editor p) {
+    color: #000000;
+}
+
+.container :global(.ql-editor h1),
+.container :global(.ql-editor h2),
+.container :global(.ql-editor h3) {
+    color: #000000;
+}
+
+.container :global(.ql-container) {
+    color: #000000;
+}
