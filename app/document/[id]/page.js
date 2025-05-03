@@ -1,18 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import 'quill/dist/quill.snow.css';
-import 'highlight.js/styles/github.css';
 import { useUser } from '@/context/context';
 import { useParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
-import { saveAs } from 'file-saver';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 import { MdDownload } from 'react-icons/md';
 import { CiSaveUp2 } from "react-icons/ci";
+import 'quill/dist/quill.snow.css';
+import 'highlight.js/styles/github.css';
+import styles from './page.module.css';
 
 export default function DocumentEditor() {
     const { id } = useParams();
@@ -42,7 +40,6 @@ export default function DocumentEditor() {
             timeout = setTimeout(later, wait);
         };
     }
-
 
     useEffect(() => {
         const fetchDocument = async () => {
@@ -102,7 +99,7 @@ export default function DocumentEditor() {
             } catch (error) {
                 console.error('Error auto-saving document:', error);
             }
-        }, 2000), // 2000ms delay
+        }, 2000),
         [id, token]
     );
 
@@ -111,6 +108,19 @@ export default function DocumentEditor() {
             if (editorRef.current && !quillInstance.current) {
                 const Quill = (await import('quill')).default;
                 const hljs = (await import('highlight.js')).default;
+
+                // Register page break blot
+                const BlockEmbed = Quill.import('blots/block/embed');
+                class PageBreak extends BlockEmbed {
+                    static create() {
+                        const node = super.create();
+                        node.classList.add('page-break');
+                        return node;
+                    }
+                }
+                PageBreak.blotName = 'pageBreak';
+                PageBreak.tagName = 'hr';
+                Quill.register(PageBreak);
 
                 quillInstance.current = new Quill(editorRef.current, {
                     theme: 'snow',
@@ -125,9 +135,30 @@ export default function DocumentEditor() {
                             ['clean'],
                             ['code-block'],
                             [{ color: [] }, { background: [] }],
-                            [{ align: [] }]
-                        ]
+                            [{ align: [] }],
+                            ['pageBreak'] // Add page break button
+                        ],
+                        keyboard: {
+                            bindings: {
+                                'shift+enter': {
+                                    handler: function () {
+                                        const range = this.quill.getSelection();
+                                        if (range) {
+                                            this.quill.insertText(range.index, '\n');
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
+                });
+
+                // Add page break handler
+                const toolbar = quillInstance.current.getModule('toolbar');
+                toolbar.addHandler('pageBreak', () => {
+                    const range = quillInstance.current.getSelection(true);
+                    quillInstance.current.insertEmbed(range.index, 'pageBreak', true, 'user');
+                    quillInstance.current.setSelection(range.index + 1, 0);
                 });
 
                 if (content) {
@@ -137,7 +168,6 @@ export default function DocumentEditor() {
                 quillInstance.current.on('text-change', () => {
                     const delta = quillInstance.current.getContents();
                     setContent(delta);
-                    // saveDocument();
                     debouncedSave(delta, title);
                 });
             }
@@ -145,19 +175,6 @@ export default function DocumentEditor() {
 
         if (isLoaded) initQuill();
     }, [isLoaded, content]);
-
-    // YOO, function that saves the document every 5 - 10 seconds
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         if (quillInstance.current) {
-    //             const delta = quillInstance.current.getContents();
-    //             setContent(delta);
-    //             saveDocument();
-    //         }
-    //     }, 1000 * 60);
-
-    //     return () => clearInterval(interval);
-    // }, [quillInstance]);
 
     const saveDocument = async () => {
         if (!title.trim()) {
@@ -203,7 +220,6 @@ export default function DocumentEditor() {
 
     const downloadAsPDF = () => {
         const content = editorRef.current.querySelector('.ql-editor');
-        // console.log('Content:', content);
 
         html2pdf()
             .from(content)
@@ -247,48 +263,54 @@ export default function DocumentEditor() {
         }
     }
 
-
     if (!isLoaded) return <div className="p-6 text-gray-600">Loading document...</div>;
 
     return (
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className={styles.editorWrapper}>
             <input
                 type="text"
                 placeholder="Document Title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-3xl font-semibold border-b-2 border-gray-300 mb-6 outline-none"
+                onChange={(e) => {
+                    setTitle(e.target.value)
+                    if (e.target.value.trim()) {
+                        debouncedSave(content, e.target.value);
+                    } else {
+                        setAutoSaveToast(null);
+                    }
+                }}
+                className="w-full max-w-[8.5in] text-3xl font-semibold border-b-2 border-gray-300 mb-6 outline-none"
             />
 
-            <div ref={editorRef} className="bg-white min-h-[400px] text-black"></div>
+            <div className={styles.container}>
+                <div
+                    ref={editorRef}
+                    className={styles.editor}
+                ></div>
+            </div>
 
-            <button
-                onClick={saveDocument}
-                className="mt-6 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-            >
-                Save
-            </button>
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    downloadAsPDF();
-                }}
-                className="mt-4 ml-4 bg-red-600 text-white cursor-pointer px-6 py-2 rounded hover:bg-red-700"
-            >
-                <MdDownload className="inline-block mr-2" />
-                PDF
-            </button>
-
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    downloadDOCX();
-                }}
-                className="mt-4 ml-4 bg-green-600 text-white cursor-pointer px-6 py-2 rounded hover:bg-green-700"
-            >
-                <MdDownload className="inline-block mr-2" />
-                Docx
-            </button>
+            <div className="flex gap-4 mt-6">
+                <button
+                    onClick={saveDocument}
+                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+                >
+                    Save
+                </button>
+                <button
+                    onClick={downloadAsPDF}
+                    className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
+                >
+                    <MdDownload className="inline-block mr-2" />
+                    PDF
+                </button>
+                <button
+                    onClick={downloadDOCX}
+                    className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                >
+                    <MdDownload className="inline-block mr-2" />
+                    DOCX
+                </button>
+            </div>
 
             {toast && (
                 <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
