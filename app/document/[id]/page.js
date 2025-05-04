@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
-import { MdDownload } from 'react-icons/md';
+import { MdDownload, MdEdit } from 'react-icons/md';
 import { CiSaveUp2 } from "react-icons/ci";
 import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
@@ -20,6 +20,7 @@ export default function DocumentEditor() {
     const editorRef = useRef(null);
     const quillInstance = useRef(null);
 
+    const [document, setDocument] = useState(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState(null);
     const [toast, setToast] = useState(null);
@@ -55,6 +56,7 @@ export default function DocumentEditor() {
 
                 if (response.status === 200) {
                     const data = response.data.data;
+                    setDocument(data);
                     setTitle(data.title);
                     const parsedContent = JSON.parse(data.content || '{"ops":[{"insert":"\\n"}]}');
                     setContent(parsedContent);
@@ -266,70 +268,88 @@ export default function DocumentEditor() {
     if (!isLoaded) return <div className="p-6 text-gray-600">Loading document...</div>;
 
     return (
-        <div className={styles.editorWrapper}>
-            <input
-                type="text"
-                placeholder="Document Title"
-                value={title}
-                onChange={(e) => {
-                    setTitle(e.target.value)
-                    if (e.target.value.trim()) {
-                        debouncedSave(content, e.target.value);
-                    } else {
-                        setAutoSaveToast(null);
-                    }
-                }}
-                className="w-full max-w-[8.5in] text-3xl font-semibold border-b-2 border-gray-300 mb-6 outline-none"
-            />
-
-            <div className={styles.container}>
-                <div
-                    ref={editorRef}
-                    className={styles.editor}
-                ></div>
+        <div className='flex gap-4 justify-center items-start h-screen'>
+            <div className='border w-[400px] h-full'>
+                <div className='flex items-center justify-between p-4 border-b'>
+                    <h2 className='text-xl font-semibold'>Document Info</h2>
+                    <button onClick={saveDocument} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        {saveIcon}
+                    </button>
+                </div>
+                <div className='p-4'>
+                    <p><strong>Title:</strong> {title}</p>
+                    <p><strong>Author:</strong> {user.username}</p>
+                    <p><strong>Created At:</strong> {new Date(document.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div className='p-4 border-t'>
+                    <h3 className='text-lg font-semibold'>Document History</h3>
+                    <ul className='list-disc pl-5'>
+                        <li>Version 1.0 - Initial creation</li>
+                        <li>Version 1.1 - Minor edits</li>
+                        <li>Version 1.2 - Added images</li>
+                    </ul>
+                </div>
             </div>
 
-            <div className="flex gap-4 mt-6">
-                <button
-                    onClick={saveDocument}
-                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-                >
-                    Save
-                </button>
-                <button
-                    onClick={downloadAsPDF}
-                    className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
-                >
-                    <MdDownload className="inline-block mr-2" />
-                    PDF
-                </button>
-                <button
-                    onClick={downloadDOCX}
-                    className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-                >
-                    <MdDownload className="inline-block mr-2" />
-                    DOCX
-                </button>
+            <div className={styles.editorWrapper}>
+                <input
+                    type="text"
+                    placeholder="Document Title"
+                    value={title}
+                    onChange={(e) => {
+                        setTitle(e.target.value)
+                        if (e.target.value.trim()) {
+                            debouncedSave(content, e.target.value);
+                        } else {
+                            setAutoSaveToast(null);
+                        }
+                    }}
+                    className="w-[7.7in] text-3xl font-semibold border-b-2 border-gray-300 mb-6 outline-none"
+                />
+
+                <div className={styles.container}>
+                    <div
+                        ref={editorRef}
+                        className={styles.editor}
+                    ></div>
+                </div>
+
+                <div className="flex gap-4 mt-6">
+                    <button
+                        onClick={downloadAsPDF}
+                        className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
+                    >
+                        <MdDownload className="inline-block mr-2" />
+                        PDF
+                    </button>
+                    <button
+                        onClick={downloadDOCX}
+                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+                    >
+                        <MdDownload className="inline-block mr-2" />
+                        DOCX
+                    </button>
+                </div>
+
+                {toast && (
+                    <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                        {toast}
+                    </div>
+                )}
+
+                {error && (
+                    <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                        {error}
+                    </div>
+                )}
+
+                {autoSaveToast && (
+                    <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg flex items-center justify-center gap-2">
+                        {autoSaveToast} saving...
+                    </div>
+                )}
+
             </div>
-
-            {toast && (
-                <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
-                    {toast}
-                </div>
-            )}
-
-            {error && (
-                <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
-                    {error}
-                </div>
-            )}
-
-            {autoSaveToast && (
-                <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg flex items-center justify-center gap-2">
-                    {autoSaveToast} saving...
-                </div>
-            )}
-
-        </div>
+        </div >
     );
 }

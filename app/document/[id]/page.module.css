@@ -5,6 +5,7 @@
     align-items: center;
     padding: 2rem;
     scale: 1;
+    border: 2px solid white;
 }
 
 .toolbar {
