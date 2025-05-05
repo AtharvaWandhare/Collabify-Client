@@ -101,7 +101,7 @@ function DocumentPage() {
             .save();
     };
 
-    if (loading) return <div>Loading...</div>;
+    // if (loading) return <div>Loading...</div>;
 
     return (
         <div className="max-w-3xl mx-auto my-4 p-6 bg-gray-100 rounded-lg shadow-md">
