@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
-import { MdDownload, MdEdit } from 'react-icons/md';
+import { MdDownload, MdEditSquare, MdOutlineRemoveRedEye } from 'react-icons/md';
 import { CiSaveUp2 } from "react-icons/ci";
 import 'quill/dist/quill.snow.css';
 import 'highlight.js/styles/github.css';
@@ -23,6 +23,9 @@ export default function DocumentEditor() {
     const [document, setDocument] = useState(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState(null);
+    const [emails, setEmails] = useState([]);
+    const [collaborators, setCollaborators] = useState([]);
+    const [collaboratorEmail, setCollaboratorEmail] = useState('');
     const [toast, setToast] = useState(null);
     const [autoSaveToast, setAutoSaveToast] = useState(null);
     const [error, setError] = useState(null);
@@ -137,8 +140,8 @@ export default function DocumentEditor() {
                             ['clean'],
                             ['code-block'],
                             [{ color: [] }, { background: [] }],
-                            [{ align: [] }],
-                            ['pageBreak'] // Add page break button
+                            [{ align: ['right', 'left', 'center', 'justified'] }],
+                            ['pageBreak']
                         ],
                         keyboard: {
                             bindings: {
@@ -155,7 +158,6 @@ export default function DocumentEditor() {
                     }
                 });
 
-                // Add page break handler
                 const toolbar = quillInstance.current.getModule('toolbar');
                 toolbar.addHandler('pageBreak', () => {
                     const range = quillInstance.current.getSelection(true);
@@ -265,11 +267,34 @@ export default function DocumentEditor() {
         }
     }
 
-    if (!isLoaded) return <div className="p-6 text-gray-600">Loading document...</div>;
+    const addCollaborator = async () => {
+        console.log('\nAdding collaborator:', emails.map(email => email.trim()));
+        await axios.post(`https://localhost:8000/api/v1/document/${id}/collaborators`, {
+            emails: emails.map(email => email.trim())
+        }, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' } })
+            .then((response) => {
+                if (response.status === 200) {
+                    setCollaborators(response.data.data);
+                    setEmails([]);
+                    setToast('Collaborator added successfully!');
+                    setTimeout(() => {
+                        setToast(null);
+                    }, 3000);
+                }
+            }).catch((error) => {
+                console.error('Error adding collaborator:', error);
+                setError('An error occurred while adding collaborator.');
+                setTimeout(() => {
+                    setError(null);
+                }, 3000);
+            })
+    }
+
+    // if (!isLoaded) return <div className="p-6 text-gray-600">Loading document...</div>;
 
     return (
         <div className='flex gap-4 justify-center items-start h-screen'>
-            <div className='border w-[400px] h-full'>
+            <div className='border w-min h-full'>
                 <div className='flex items-center justify-between p-4 border-b'>
                     <h2 className='text-xl font-semibold'>Document Info</h2>
                     <button onClick={saveDocument} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -279,7 +304,7 @@ export default function DocumentEditor() {
                 <div className='p-4'>
                     <p><strong>Title:</strong> {title}</p>
                     <p><strong>Author:</strong> {user.username}</p>
-                    <p><strong>Created At:</strong> {new Date(document.createdAt).toLocaleDateString()}</p>
+                    <p><strong>Created At:</strong> {new Date(document?.createdAt || '').toLocaleDateString()}</p>
                 </div>
                 <div className='p-4 border-t'>
                     <h3 className='text-lg font-semibold'>Document History</h3>
@@ -288,6 +313,50 @@ export default function DocumentEditor() {
                         <li>Version 1.1 - Minor edits</li>
                         <li>Version 1.2 - Added images</li>
                     </ul>
+                </div>
+
+                <div className='p-4 border-t'>
+                    <h3 className='text-lg font-semibold'>Collaborators</h3>
+                    <ul className='list-none pl-0'>
+                        {document?.collaborators?.map((collab) => (
+                            <li
+                                key={collab._id}
+                                className='flex items-center justify-between gap-2 p-2 border-b'>
+                                <sapn className=''>
+                                    {collab.email}
+                                </sapn>
+                                <span className=''>
+                                    {collab.permission === 'read' ? <MdOutlineRemoveRedEye /> : <MdEditSquare />}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                    {/* <button onClick={addCollaborator.bind(id, emails)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Collaborator</button> */}
+
+                    <input
+                        type='email'
+                        placeholder='Add people'
+                        required
+                        className='p-4 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 w-full my-4'
+                        onChange={(e) => setCollaboratorEmail(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                setEmails((prev) => [...prev, e.target.value]);
+                                setCollaboratorEmail('');
+                            }
+                        }}
+                        value={collaboratorEmail}
+                    />
+                    <button type='button' onClick={addCollaborator} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Collaborator</button>
+                    <div className='flex flex-wrap items-start justify-center'>{emails.map((email) => {
+                        return (
+                            <div key={email} className='bg-blue-200 text-blue-800 px-2 py-1 rounded-full m-1'>
+                                {email}
+                                <button type='button' onClick={() => setEmails((prev) => prev.filter((e) => e !== email))} className='ml-2 text-red-600'>x</button>
+                            </div>
+                        )
+                    })}</div>
+
                 </div>
             </div>
 
@@ -332,19 +401,19 @@ export default function DocumentEditor() {
                 </div>
 
                 {toast && (
-                    <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
+                    <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
                         {toast}
                     </div>
                 )}
 
                 {error && (
-                    <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
+                    <div className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                         {error}
                     </div>
                 )}
 
                 {autoSaveToast && (
-                    <div className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg flex items-center justify-center gap-2">
+                    <div className="fixed top-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg flex items-center justify-center gap-2">
                         {autoSaveToast} saving...
                     </div>
                 )}
