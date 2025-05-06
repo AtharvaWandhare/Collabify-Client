@@ -325,9 +325,11 @@ export default function DocumentEditor() {
                                 <sapn className=''>
                                     {collab.email}
                                 </sapn>
-                                <span className=''>
-                                    {collab.permission === 'read' ? <MdOutlineRemoveRedEye /> : <MdEditSquare />}
-                                </span>
+                                {collab.status === 'accepted' ? <>
+                                    <span className=''>
+                                        {collab.permission === 'read' ? <MdOutlineRemoveRedEye /> : <MdEditSquare />}
+                                    </span>
+                                </> : <></>}
                             </li>
                         ))}
                     </ul>
