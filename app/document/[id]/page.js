@@ -319,18 +319,19 @@ export default function DocumentEditor() {
                     <h3 className='text-lg font-semibold'>Collaborators</h3>
                     <ul className='list-none pl-0'>
                         {document?.collaborators?.map((collab) => (
-                            <li
+                            collab.status === 'accepted' &&
+                            < li
                                 key={collab._id}
-                                className='flex items-center justify-between gap-2 p-2 border-b'>
-                                <sapn className=''>
+                                className='flex items-center justify-between gap-2 p-2 border-b'
+                            >
+                                < span className='' >
                                     {collab.email}
-                                </sapn>
-                                {collab.status === 'accepted' ? <>
-                                    <span className=''>
-                                        {collab.permission === 'read' ? <MdOutlineRemoveRedEye /> : <MdEditSquare />}
-                                    </span>
-                                </> : <></>}
+                                </span>
+                                <span className=''>
+                                    {collab.permission === 'read' ? <MdOutlineRemoveRedEye /> : <MdEditSquare />}
+                                </span>
                             </li>
+
                         ))}
                     </ul>
                     {/* <button onClick={addCollaborator.bind(id, emails)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Collaborator</button> */}
@@ -360,7 +361,7 @@ export default function DocumentEditor() {
                     })}</div>
 
                 </div>
-            </div>
+            </div >
 
             <div className={styles.editorWrapper}>
                 <input

@@ -10,11 +10,7 @@ import { createDocument } from "@/actions/actions";
 import classes from './page.module.css';
 import { MdDeleteOutline, MdOutlineAddCircleOutline } from "react-icons/md";
 
-/*
-This Page shows all the documents created by the user and a button to create a new document which redirects to the create document page.
-It also shows a list of all the documents created by the user and a button to edit or delete each document.
-*/
-function DocumentPage() {
+export default function DocumentPage() {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(false);
     const { user } = useUser();
@@ -156,10 +152,10 @@ function DocumentPage() {
 
 }
 
-export default function WrappedDocumentPage() {
-    return (
-        <ProtectedRoute>
-            <DocumentPage />
-        </ProtectedRoute>
-    )
-}
+// export default function WrappedDocumentPage() {
+//     return (
+//         <ProtectedRoute>
+//             <DocumentPage />
+//         </ProtectedRoute>
+//     )
+// }
